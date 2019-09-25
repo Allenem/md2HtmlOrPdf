@@ -1,0 +1,249 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <title>Markdown转HTML&PDF截图并下载</title>
+    <!-- 可在下面网址自行下载js和css文件 -->
+    <!-- 
+    <script src="http://apps.bdimg.com/libs/jquery/2.1.4/jquery.min.js"></script>
+    <script src="https://cdn.bootcss.com/marked/0.3.4/marked.min.js"></script>
+    <script src="https://linwalker.github.io/render-html-to-pdf/js/html2canvas.js"></script>
+    <script src="https://linwalker.github.io/render-html-to-pdf/js/jsPdf.debug.js"></script>
+    <script src="http://cdn.bootcss.com/highlight.js/8.0/highlight.min.js"></script>
+    <link rel="stylesheet" href="https://sindresorhus.com/github-markdown-css/github-markdown.css">
+     -->
+    <script src="./js/jquery.min.js"></script>
+    <script src="./js/marked.min.js"></script>
+    <script src="./js/html2canvas.js"></script>
+    <script src="./js/jsPdf.debug.js"></script>
+    <script src="./js/highlight.min.js"></script>
+    <link rel="stylesheet" href="./css/github-markdown.css">
+    <link rel="stylesheet" href="./css/mycss.css">
+    <link rel="shortcut icon" href="https://avatars3.githubusercontent.com/u/33366355?s=40&v=3">
+    <style>
+        html,body{
+            margin: 0;
+            padding: 0;
+        }
+        #edit {
+            display: flex; 
+            justify-content: space-between;
+        }
+        #siderbar{
+            width: 10%;
+            margin-bottom: 5vh;
+        }
+        .button {
+            position: fixed;
+            color: #fff;
+            background-color: #009a61;
+            border-color: #008151;
+            padding: 0 13px;
+            font-size: 14px;
+            border-radius: 4px;
+            margin: 10px;
+            cursor: pointer;
+        }
+        #download{
+            left: 0;
+            top: 10px;
+        }
+        #downloadPdf{
+            left: 0;
+            top: 40px;
+        }
+        #totop{
+            left: 0;
+            bottom: 6vh;
+        }
+        #siderbar a{
+            text-decoration: none;
+        }
+        #content {
+            margin-bottom: 6vh;
+            padding: 30px; 
+            width: 44%;
+            float: left;
+            height: auto;
+            border:  1px solid  #fd8b19; 
+        }
+        #show{
+            margin-bottom: 6vh;
+            width: 44%; 
+            border:  1px solid  #ff5599; 
+            padding: 50px; 
+            box-sizing: border-box;
+            float: left;height: auto;
+        }
+        footer{
+            position:fixed;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            height: 5vh;
+            line-height: 5vh;
+            color: #fff;
+            background-color: rgb(107,116,129);
+            text-align: center;
+        }
+    </style>
+</head>
+
+<body id="edit">
+    <!-- 主体部分 START -->
+    <div id="siderbar">
+        <button class="button" id="download">下载html</button>
+        <button class="button" id="downloadPdf">下载PDF</button>
+        <a href="#" class="button" id="totop">返回顶部</a>
+    </div>
+    <textarea id="content">input Markdown content</textarea>
+    <div id="show" class="typo markdown-body">output HTML content</div>
+    <footer>Copyright © 2019 Allenem all rights reserved</footer>
+    <!-- 主体部分 END -->
+
+    <script>
+        marked.setOptions({
+            renderer: new marked.Renderer(),
+            gfm: true,
+            tables: true,
+            escaped : true,
+            breaks: false,
+            pedantic: false,
+            sanitize: false,
+            smartLists: true,
+            smartypants: false,
+            highlight: function (code, lang) {
+                return hljs.highlightAuto(code).value;
+            }
+        });
+
+        $("#content").on("input  propertychange", function() {
+            var val = $(this).val();
+            $("#show").html(marked(val));
+        });
+
+        function downloadFile(fileName, content){
+            var aLink = document.createElement('a');
+            var blob = new Blob([content]);
+            var evt = document.createEvent("HTMLEvents");
+            aLink.download = fileName;
+            aLink.href = URL.createObjectURL(blob);
+            aLink.click();
+        }
+
+        $("#download").click( e => {
+            var tpl = new Template($('#tpl').html());
+            var s = tpl.render({
+                title: "Markdown2HTML",
+                style:$("style").html(),
+                content:$("#show").html()
+            });
+            downloadFile("Markdown2HTML.html",s);
+        });
+
+        function Template(tpl) {
+            var
+                fn,
+                match,
+                code = ['var r=[];\nvar _html = function (str) { return str; };'],
+                re = /\{\s*([a-zA-Z\.\_0-9()]+)(\s*\|\s*safe)?\s*\}/m,
+                addLine = function (text) {
+                  code.push('r.push(\'' + text.replace(/\'/g, '\\\'').replace(/\n/g, '\\n').replace(/\r/g, '\\r') + '\');');
+                };
+            while (match = re.exec(tpl)) {
+                if (match.index > 0) {
+                    addLine(tpl.slice(0, match.index));
+                }
+                if (match[2]) {
+                    code.push('r.push(String(this.' + match[1] + '));');
+                }
+                else {
+                    code.push('r.push(_html(String(this.' + match[1] + ')));');
+                }
+                tpl = tpl.substring(match.index + match[0].length);
+            }
+            addLine(tpl);
+            code.push('return r.join(\'\');');
+            fn = new Function(code.join('\n'));
+            this.render = function (model) {
+                return fn.apply(model);
+            };
+        }
+
+        $("#downloadPdf").click(e=>{
+            html2canvas(document.body, {
+                onrendered:function(canvas) {
+
+                    var contentWidth = canvas.width;
+                    var contentHeight = canvas.height;
+
+                    //一页pdf显示html页面生成的canvas高度;
+                    var pageHeight = contentWidth / 592.28 * 841.89;
+                    //未生成pdf的html页面高度
+                    var leftHeight = contentHeight;
+                    //页面偏移
+                    var position = 0;
+                    //a4纸的尺寸[595.28,841.89]，html页面生成的canvas在pdf中图片的宽高
+                    var imgWidth = 595.28;
+                    var imgHeight = 592.28/contentWidth * contentHeight;
+
+                    var pageData = canvas.toDataURL('image/jpeg', 1.0);
+
+                    var pdf = new jsPDF('', 'pt', 'a4');
+
+                    //有两个高度需要区分，一个是html页面的实际高度，和生成pdf的页面高度(841.89)
+                    //当内容未超过pdf一页显示的范围，无需分页
+                    if (leftHeight < pageHeight) {
+                        pdf.addImage(pageData, 'JPEG', 0, 0, imgWidth, imgHeight );
+                    } else {
+                        while(leftHeight > 0) {
+                            pdf.addImage(pageData, 'JPEG', 0, position, imgWidth, imgHeight)
+                            leftHeight -= pageHeight;
+                            position -= 841.89;
+                            //避免添加空白页
+                            if(leftHeight > 0) {
+                                pdf.addPage();
+                            }
+                        }
+                    }
+
+                    pdf.save('Markdown2PDF.pdf');
+                }
+            })
+        }); 
+ 
+    </script>
+    <!-- 下载的HTML -->
+    <script id="tpl" type="text/plain">
+        <html>
+        <head>
+        <meta charset="utf-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1, minimal-ui">
+        <title>GitHub Markdown CSS demo</title>
+        <link rel="shortcut icon" href="https://avatars3.githubusercontent.com/u/33366355?s=40&v=3">
+        <link rel="stylesheet" href="https://sindresorhus.com/github-markdown-css/github-markdown.css">
+        <link rel="stylesheet" href="https://blog-static.cnblogs.com/files/allenem/mycss.css">
+        <style>
+            @media (min-width: 768px) {
+                .markdown-body {
+                    box-sizing: border-box;
+                    min-width: 200px;
+                    max-width: 980px;
+                    margin: 0 auto;
+                    padding: 45px;
+                }
+            }
+        </style>
+        </head>
+        <body>
+        <article class="markdown-body">
+          {content}
+        </article>
+        </body>
+      </html>
+    </script>
+
+</body>
+
+</html>
