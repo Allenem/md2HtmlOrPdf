@@ -71,10 +71,11 @@
         #show{
             margin-bottom: 6vh;
             width: 44%; 
+            height: auto;
             border:  1px solid  #ff5599; 
             padding: 50px; 
             box-sizing: border-box;
-            float: left;height: auto;
+            float: left;
         }
         footer{
             position:fixed;
@@ -135,11 +136,11 @@
         $("#download").click( e => {
             var tpl = new Template($('#tpl').html());
             var s = tpl.render({
-                title: "Markdown2HTML",
+                title: "index",
                 style:$("style").html(),
                 content:$("#show").html()
             });
-            downloadFile("Markdown2HTML.html",s);
+            downloadFile("index.html",s);
         });
 
         function Template(tpl) {
